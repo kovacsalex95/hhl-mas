@@ -14,11 +14,11 @@ Implement the "Bridge Layer" tooling and refine the prompt kits to enable the pu
 - [x] Implement `lib/` module structure
 - [x] Create `config.yaml` and `requirements.txt`
 
-### Phase 3: Toolkit Documentation (Completed)
-- [x] Create `tools/README.md`
-  - [x] Document installation/requirements
-  - [x] Document usage for all 3 tools (arguments, outputs)
-  - [x] Document configuration options
+### Phase 3: Toolkit Documentation (In Progress)
+- [ ] Create `tools/README.md`
+  - [ ] Document installation/requirements
+  - [ ] Document usage for all 3 tools (arguments, outputs)
+  - [ ] Document configuration options
 
 ## Deliverables
 - [x] **Bridge Layer Tools** (`tools/`):
@@ -29,8 +29,8 @@ Implement the "Bridge Layer" tooling and refine the prompt kits to enable the pu
     - `lead_dev_system.md`: Reactive architect persona.
     - `senior_dev_system.md`: Proactive engineer persona.
     - `tool_specs.md`: Documentation for bridge tools.
-- [x] **Documentation**: `tools/README.md`
+- [ ] **Documentation**: `tools/README.md`
 
 ## Success Criteria
 - [x] All scripts in `tools/` are executable and lint-free.
-- [x] Comprehensive documentation exists in `tools/README.md`.
+- [ ] Comprehensive documentation exists in `tools/README.md`.
