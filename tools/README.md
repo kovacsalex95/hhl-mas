@@ -9,6 +9,8 @@ The Bridge Layer enables communication between Senior DEV (Claude Code) and Lead
 | `ask_lead.py` | Query Lead DEV for clarifications, architectural decisions, or implementation guidance |
 | `report_progress.py` | Report phase/milestone completion status to Lead DEV |
 | `status_check.py` | Validate current execution state against the active plan |
+| `ingest_brief.py` | Bootstrap new projects from a raw text brief or file |
+| `fetch_next.py` | Automatically transition to the next milestone after completion |
 
 ## Installation
 
@@ -279,6 +281,81 @@ Action Required: Run 'ask_lead' for remediation guidance
 [END STATUS]
 ```
 
+---
+
+### `ingest_brief` - Project Inception
+
+Bootstrap a new project or module from a raw text brief or file. This tool initializes `ARCHITECTURE.md` and `M1_Init.md`.
+
+**Usage:**
+
+```bash
+python tools/ingest_brief.py "<brief>" [options]
+```
+
+**Arguments:**
+
+| Argument | Type | Required | Description |
+|----------|------|----------|-------------|
+| `brief` | string | No* | The project brief text (required if `--file` is not used) |
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--file`, `-f` | string | none | Path to a file containing the project brief |
+| `--verbose` | flag | `false` | Include debug information |
+| `--dry-run` | flag | `false` | Preview files without writing them |
+| `--output-dir` | string | `docs/` | Override output directory |
+
+**Examples:**
+
+```bash
+# Bootstrap from string
+python tools/ingest_brief.py "Build a simple calculator CLI"
+
+# Bootstrap from file
+python tools/ingest_brief.py --file project_brief.txt
+
+# Preview generation
+python tools/ingest_brief.py --dry-run "Create a REST API for user management"
+```
+
+---
+
+### `fetch_next` - Milestone Progression
+
+Automatically transition to the next milestone after completing the current one. It archives the completed milestone and fetches the next specification from Lead DEV.
+
+**Usage:**
+
+```bash
+python tools/fetch_next.py [options]
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--milestone` | string | auto-detected | Specify the milestone that was just completed |
+| `--force`, `-f` | flag | `false` | Skip confirmation for incomplete items or overwrites |
+| `--no-archive` | flag | `false` | Skip archiving the current milestone |
+| `--verbose` | flag | `false` | Include debug information |
+| `--dry-run` | flag | `false` | Preview the next milestone without writing |
+
+**Examples:**
+
+```bash
+# Auto-detect current and fetch next
+python tools/fetch_next.py
+
+# Specify completed milestone
+python tools/fetch_next.py --milestone M3
+
+# Force progression despite incomplete items
+python tools/fetch_next.py --force
+```
+
 ## Troubleshooting
 
 ### Exit Codes Reference
@@ -317,19 +394,40 @@ Action Required: Run 'ask_lead' for remediation guidance
 ## Directory Structure
 
 ```
-tools/
-├── ask_lead.py           # Query tool for clarifications
-├── report_progress.py    # Progress reporting tool
-├── status_check.py       # Alignment validation tool
-├── lib/
-│   ├── __init__.py
-│   ├── config.py         # Configuration management
-│   ├── context.py        # Context aggregation logic
-│   └── interface.py      # Lead DEV communication interface
-├── config.yaml           # Bridge Layer configuration
-├── requirements.txt      # Python dependencies
-└── README.md             # This file
+├── hmas_boot.sh          # Master bootloader script (Project Root)
+├── tools/
+│   ├── ask_lead.py           # Query tool for clarifications
+│   ├── report_progress.py    # Progress reporting tool
+│   ├── status_check.py       # Alignment validation tool
+│   ├── ingest_brief.py       # Project inception tool
+│   ├── fetch_next.py         # Milestone progression tool
+│   ├── lib/
+│   │   ├── __init__.py
+│   │   ├── config.py         # Configuration management
+│   │   ├── context.py        # Context aggregation logic
+│   │   └── interface.py      # Lead DEV communication interface
+│   ├── config.yaml           # Bridge Layer configuration
+│   ├── requirements.txt      # Python dependencies
+│   └── README.md             # This file
 ```
+
+## The Master Bootloader (`hmas_boot.sh`)
+
+The `hmas_boot.sh` script (located in the project root) is the official entry point for HMAS sessions. It automates environment setup and context initialization.
+
+**Usage:**
+
+```bash
+./hmas_boot.sh [options]
+```
+
+**Options:**
+
+- `--check`: Run environment checks only.
+- `--inception`: Start in "Project Inception" mode for new projects.
+- `--milestone M#`: Boot with a specific milestone context.
+
+It automatically copies the appropriate **Boot Prompt** to your clipboard for easy pasting into the Senior DEV (Claude Code) session.
 
 ## Further Reading
 
