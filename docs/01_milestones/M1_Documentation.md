@@ -5,7 +5,7 @@ Establish the baseline documentation, formalize the HMAS workflow, and implement
 
 ## Deliverables
 - [x] Repository Skeleton (`docs/`, `.gemini/`, etc.)
-- [ ] Comprehensive Workflow Guide (Updated for Pull-Model).
+- [x] Comprehensive Workflow Guide (Updated for Pull-Model).
 - [ ] **The HHL-Bridge Tooling** (`tools/` directory).
 - [ ] Initial Prompt Kits.
 
@@ -16,8 +16,8 @@ Establish the baseline documentation, formalize the HMAS workflow, and implement
 - [x] Map Confluence content to repo files.
 
 ### 2. Workflow Documentation
-- [ ] Update `docs/00_global/WORKFLOW.md` to reflect the Pull-Based model.
-- [ ] Update `docs/00_global/ARCHITECTURE.md` to include the Bridge Layer.
+- [x] Update `docs/00_global/WORKFLOW.md` to reflect the Pull-Based model.
+- [x] Update `docs/00_global/ARCHITECTURE.md` to include the Bridge Layer.
 
 ### 3. Bridge Layer Implementation
 - [ ] Create `tools/ask_lead.py`:
