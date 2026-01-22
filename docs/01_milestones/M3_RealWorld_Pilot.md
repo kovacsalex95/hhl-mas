@@ -5,18 +5,18 @@ Build a "Pilot Application" (a simple Python-based REST API for a Todo List) ins
 
 ## Phases
 
-### Phase 1: Initialization & Architecture
-- [ ] **Setup:** Initialize `src/` directory and Python environment structure.
-- [ ] **Architecture Query:** Senior DEV must use `ask_lead` to determine the authorized Tech Stack (Framework, Database, Testing).
-- [ ] **Scaffolding:** Create `requirements.txt` and initial project skeleton based on the decision.
+### Phase 1: Initialization & Architecture (Completed)
+- [x] **Setup:** Initialize `src/` directory and Python environment structure.
+- [x] **Architecture Query:** Senior DEV must use `ask_lead` to determine the authorized Tech Stack (Framework, Database, Testing).
+- [x] **Scaffolding:** Create `requirements.txt` and initial project skeleton based on the decision.
 
-### Phase 2: Core Implementation
-- [ ] **Models:** Implement the Todo Item data model.
-- [ ] **API:** Implement CRUD endpoints (GET, POST, PUT, DELETE).
-- [ ] **Persistence:** Implement simple storage (in-memory or SQLite as decided).
+### Phase 2: Core Implementation (Completed)
+- [x] **Models:** Implement the Todo Item data model.
+- [x] **API:** Implement CRUD endpoints (GET, POST, PUT, DELETE).
+- [x] **Persistence:** Implement simple storage (in-memory or SQLite as decided).
 
-### Phase 3: Verification & Delivery
-- [ ] **Testing:** Implement unit tests.
+### Phase 3: Verification & Delivery (In Progress)
+- [x] **Testing:** Implement unit tests.
 - [ ] **Validation:** Verify endpoints with `curl` or a test script.
 - [ ] **Final Report:** Submit completion report via `report_progress`.
 

@@ -132,6 +132,24 @@ class LeadDevInterface:
         # Future: Implement actual Gemini CLI integration
         raise NotImplementedError("Live Lead DEV integration not yet implemented")
 
+    def _log_to_file(self, message: str) -> None:
+        """Log message to the configured log file."""
+        log_file_path = self.config.get("output", "log_file")
+        if not log_file_path:
+            return
+
+        # Ensure directory exists
+        log_path = self.config.project_root / log_file_path
+        try:
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            timestamp = datetime.now(timezone.utc).isoformat()
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"[{timestamp}] {message}\n")
+        except Exception as e:
+            if self.verbose:
+                print(f"[ERROR] Failed to write to log file: {e}")
+
     def _stub_query(
         self,
         question: str,
@@ -142,6 +160,8 @@ class LeadDevInterface:
             print("[STUB MODE] Query to Lead DEV:")
             print(f"  Question: {question}")
             print(f"  Context size: {sum(len(v) for v in context.values())} chars")
+
+        self._log_to_file(f"QUERY: {question}")
 
         # Extract document names from context for reporting
         context_used = []
@@ -161,6 +181,8 @@ class LeadDevInterface:
             f"The Lead DEV would process this with the provided context and return "
             f"architectural guidance or clarification."
         )
+
+        self._log_to_file(f"RESPONSE: {response_content[:100]}...")
 
         return LeadDevResponse(
             success=True,
@@ -184,6 +206,8 @@ class LeadDevInterface:
             print(f"  Milestone: {milestone}")
             if message:
                 print(f"  Message: {message}")
+
+        self._log_to_file(f"PROGRESS: Phase {phase} ({status}) - {milestone} - {message or ''}")
 
         response_content = (
             f"[STUB ACKNOWLEDGMENT]\n"
@@ -211,6 +235,8 @@ class LeadDevInterface:
         if self.verbose:
             print("[STUB MODE] Status validation request to Lead DEV:")
             print(f"  Context size: {sum(len(v) for v in context.values())} chars")
+
+        self._log_to_file("STATUS CHECK: Validation requested")
 
         response_content = (
             f"[STUB VALIDATION]\n"
