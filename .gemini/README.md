@@ -2,27 +2,23 @@
 
 This directory contains the configuration and prompt repository for the **Lead DEV** (Gemini CLI) within the HMAS ecosystem.
 
-## Implementation Plan (Pull-Based Model)
+## Milestone Status
 
-The goal is to enable a seamless Pull-Based interaction where the Lead DEV acts as a high-fidelity context provider.
+The configuration and prompts in this directory support the HMAS Roadmap defined in `docs/00_global/ROADMAP.md`.
 
-### Phase 1: Bridge & Documentation (Completed)
-- [x] Formalize the Pull-Based HMAS workflow.
-- [x] Implement the **Bridge Layer** (`tools/ask_lead.py`).
-- [x] Establish the documentation skeleton in `docs/`.
+### Milestone 1: Documentation & Workflow Foundation (Completed)
+- [x] Formalized Pull-Based HMAS workflow.
+- [x] Established documentation skeleton (`docs/`).
+- [x] Created initial Prompt Kits (`.gemini/prompts/`).
 
-### Phase 2: Reactive Prompt Engineering (Completed)
-- [x] Develop the **Reactive Lead DEV** System Prompt.
-- [x] Develop the **Senior DEV Pull** Prompt.
+### Milestone 2: Toolkit Implementation (In Progress)
+- [x] Refine system prompts for Pull-Based Model.
+- [x] Implement Bridge Layer tools (`tools/`).
+- [ ] Finalize Toolkit Documentation (`tools/README.md`).
 
-### Phase 3: Bridge Automation (Completed)
-- [x] Enhance `tools/ask_lead.py` to automatically include relevant documentation snippets.
-- [x] Implement `tools/status_check` for automated plan validation.
-
-### Phase 4: Integration & Refinement (Next)
-- [ ] Test the toolkit on a "Demo Feature".
-- [ ] Refine prompts based on real-world usage.
-- [ ] Extend tool capabilities (e.g., git integration hooks).
+### Milestone 3: Real-world Application (Planned)
+- [ ] Apply HMAS to a target project.
+- [ ] Refine prompts and protocols based on usage.
 
 ## Agent Personas
 
