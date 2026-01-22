@@ -1,0 +1,430 @@
+#!/usr/bin/env python3
+"""
+ingest_brief - Project inception tool for bootstrapping new projects from briefs.
+
+Part of the HMAS Inception Engine (Milestone 4).
+
+Usage:
+    python tools/ingest_brief.py "Build a simple calculator CLI"
+    python tools/ingest_brief.py --file brief.txt
+    python tools/ingest_brief.py --verbose "Create a REST API for user management"
+
+Exit codes:
+    0 - Success: project structure generated
+    1 - Error: Lead DEV unreachable
+    2 - Error: invalid input (empty or unreadable)
+    3 - Error: file generation failed
+"""
+
+import argparse
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from lib.config import Config
+from lib.interface import LeadDevInterface, LeadDevResponse
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Bootstrap a new project from a brief.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python tools/ingest_brief.py "Build a simple calculator CLI"
+  python tools/ingest_brief.py --file project_brief.txt
+  python tools/ingest_brief.py --verbose "Create a REST API for user management"
+        """,
+    )
+
+    parser.add_argument(
+        "brief",
+        type=str,
+        nargs="?",
+        help="The project brief text (or omit if using --file)",
+    )
+
+    parser.add_argument(
+        "--file", "-f",
+        type=str,
+        help="Path to a file containing the project brief",
+    )
+
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Include debug information",
+    )
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be generated without writing files",
+    )
+
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        help="Override the output directory (default: docs/)",
+    )
+
+    return parser.parse_args()
+
+
+def read_brief_from_file(filepath: str) -> Optional[str]:
+    """Read brief content from a file."""
+    try:
+        path = Path(filepath)
+        if not path.exists():
+            return None
+        return path.read_text(encoding="utf-8").strip()
+    except Exception:
+        return None
+
+
+def construct_inception_prompt(brief: str) -> str:
+    """Construct the project inception prompt for Lead DEV."""
+    return f"""PROJECT INCEPTION REQUEST
+
+You are being asked to bootstrap a new software project from the following brief.
+
+## User Brief
+{brief}
+
+## Required Outputs
+
+Please analyze this brief and generate:
+
+1. **ARCHITECTURE.md** - A high-level architecture document containing:
+   - Project overview and goals
+   - Key components/modules
+   - Technology stack recommendations
+   - Core design principles
+   - Data flow (if applicable)
+
+2. **M1_Init.md** - The first milestone specification containing:
+   - Milestone objective
+   - Phase breakdown (2-4 phases)
+   - Success criteria
+   - Deliverables checklist
+
+## Response Format
+
+Structure your response with clear section markers:
+
+### ARCHITECTURE_START ###
+(architecture document content)
+### ARCHITECTURE_END ###
+
+### MILESTONE_START ###
+(milestone 1 specification content)
+### MILESTONE_END ###
+"""
+
+
+def parse_inception_response(response_content: str) -> tuple[Optional[str], Optional[str]]:
+    """
+    Parse the Lead DEV response to extract architecture and milestone content.
+
+    Returns:
+        Tuple of (architecture_content, milestone_content)
+    """
+    architecture = None
+    milestone = None
+
+    # Extract architecture section
+    arch_start = response_content.find("### ARCHITECTURE_START ###")
+    arch_end = response_content.find("### ARCHITECTURE_END ###")
+    if arch_start != -1 and arch_end != -1:
+        architecture = response_content[arch_start + len("### ARCHITECTURE_START ###"):arch_end].strip()
+
+    # Extract milestone section
+    ms_start = response_content.find("### MILESTONE_START ###")
+    ms_end = response_content.find("### MILESTONE_END ###")
+    if ms_start != -1 and ms_end != -1:
+        milestone = response_content[ms_start + len("### MILESTONE_START ###"):ms_end].strip()
+
+    return architecture, milestone
+
+
+def generate_stub_architecture(brief: str) -> str:
+    """Generate a stub architecture document for testing."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    # Extract project name from brief (simple heuristic)
+    words = brief.split()
+    project_name = "New Project"
+    for i, word in enumerate(words):
+        if word.lower() in ["build", "create", "make", "develop", "implement"]:
+            if i + 1 < len(words):
+                project_name = " ".join(words[i+1:i+4]).rstrip(".,;:")
+                break
+
+    return f"""# Architecture: {project_name}
+
+> Generated by HMAS Inception Engine on {timestamp}
+
+## Overview
+
+This document describes the high-level architecture for the project based on the following brief:
+
+> {brief}
+
+## Key Components
+
+1. **Core Module** - Main application logic
+2. **Interface Layer** - User interaction handling
+3. **Data Layer** - Data persistence and management (if applicable)
+
+## Technology Stack
+
+- **Language:** Python 3.8+ (recommended)
+- **Testing:** pytest
+- **Documentation:** Markdown
+
+## Design Principles
+
+1. Keep it simple - start with minimal viable implementation
+2. Modular design - separate concerns into distinct modules
+3. Test-driven - write tests alongside implementation
+
+## Project Structure
+
+```
+src/
+├── __init__.py
+├── main.py          # Entry point
+├── core/            # Core business logic
+└── utils/           # Utility functions
+
+tests/
+├── __init__.py
+└── test_core.py     # Core module tests
+
+docs/
+├── 00_global/       # Global documentation
+└── 01_milestones/   # Milestone specifications
+```
+
+## Next Steps
+
+See `docs/01_milestones/M1_Init.md` for the initial milestone specification.
+"""
+
+
+def generate_stub_milestone(brief: str) -> str:
+    """Generate a stub milestone document for testing."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    return f"""# Milestone 1: Initial Implementation
+
+> Generated by HMAS Inception Engine on {timestamp}
+
+## Objective
+
+Implement the foundational components based on the project brief:
+
+> {brief}
+
+## Phases
+
+### Phase 1: Project Setup
+- [ ] Initialize project structure
+- [ ] Set up development environment
+- [ ] Create basic configuration files
+
+### Phase 2: Core Implementation
+- [ ] Implement main entry point
+- [ ] Create core module skeleton
+- [ ] Add basic input/output handling
+
+### Phase 3: Testing & Validation
+- [ ] Write unit tests for core functionality
+- [ ] Manual testing and validation
+- [ ] Document usage instructions
+
+## Success Criteria
+
+- [ ] Project runs without errors
+- [ ] Core functionality works as specified in the brief
+- [ ] Basic test coverage in place
+- [ ] README with usage instructions
+
+## Deliverables
+
+1. Working implementation in `src/`
+2. Test suite in `tests/`
+3. Updated documentation
+"""
+
+
+def ensure_directories(config: Config, output_dir: Optional[str] = None) -> tuple[Path, Path]:
+    """
+    Ensure the output directories exist.
+
+    Returns:
+        Tuple of (global_docs_path, milestones_path)
+    """
+    if output_dir:
+        base_path = Path(output_dir)
+    else:
+        base_path = config.docs_path
+
+    global_docs = base_path / "00_global"
+    milestones = base_path / "01_milestones"
+
+    global_docs.mkdir(parents=True, exist_ok=True)
+    milestones.mkdir(parents=True, exist_ok=True)
+
+    return global_docs, milestones
+
+
+def write_output_files(
+    architecture_content: str,
+    milestone_content: str,
+    global_docs_path: Path,
+    milestones_path: Path,
+    dry_run: bool = False,
+    verbose: bool = False,
+) -> bool:
+    """
+    Write the generated content to output files.
+
+    Returns:
+        True if successful, False otherwise
+    """
+    arch_file = global_docs_path / "ARCHITECTURE.md"
+    milestone_file = milestones_path / "M1_Init.md"
+
+    if dry_run:
+        print("[DRY RUN] Would write the following files:")
+        print(f"\n--- {arch_file} ---")
+        print(architecture_content[:500] + "..." if len(architecture_content) > 500 else architecture_content)
+        print(f"\n--- {milestone_file} ---")
+        print(milestone_content[:500] + "..." if len(milestone_content) > 500 else milestone_content)
+        return True
+
+    try:
+        arch_file.write_text(architecture_content, encoding="utf-8")
+        if verbose:
+            print(f"[OK] Written: {arch_file}")
+
+        milestone_file.write_text(milestone_content, encoding="utf-8")
+        if verbose:
+            print(f"[OK] Written: {milestone_file}")
+
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to write files: {e}")
+        return False
+
+
+def main() -> int:
+    """Main entry point."""
+    args = parse_args()
+
+    # Get brief content
+    brief = None
+    if args.file:
+        brief = read_brief_from_file(args.file)
+        if brief is None:
+            print(f"[ERROR] Could not read brief from file: {args.file}")
+            return 2
+    elif args.brief:
+        brief = args.brief.strip()
+    else:
+        print("[ERROR] No brief provided. Use positional argument or --file flag.")
+        return 2
+
+    if not brief:
+        print("[ERROR] Brief cannot be empty.")
+        return 2
+
+    if args.verbose:
+        print(f"[INFO] Processing brief: {brief[:100]}{'...' if len(brief) > 100 else ''}")
+
+    # Initialize configuration
+    try:
+        config = Config()
+    except Exception as e:
+        print(f"[ERROR] Configuration initialization failed: {e}")
+        return 3
+
+    # Ensure output directories exist
+    try:
+        global_docs_path, milestones_path = ensure_directories(config, args.output_dir)
+        if args.verbose:
+            print(f"[INFO] Output directories ready: {global_docs_path.parent}")
+    except Exception as e:
+        print(f"[ERROR] Failed to create directories: {e}")
+        return 3
+
+    # Initialize Lead DEV interface and send inception request
+    try:
+        interface = LeadDevInterface(config, verbose=args.verbose)
+        prompt = construct_inception_prompt(brief)
+
+        if args.verbose:
+            print("[INFO] Sending inception request to Lead DEV...")
+
+        # Query Lead DEV
+        response = interface.query(prompt, {"brief": brief})
+
+        if not response.success:
+            print(f"[ERROR] Lead DEV returned error: {response.error_message}")
+            return 1
+
+        # Try to parse response (for real Lead DEV integration)
+        architecture, milestone = parse_inception_response(response.content)
+
+        # If parsing failed or returned placeholder text (stub mode), generate stub content
+        is_stub = (
+            architecture is None
+            or milestone is None
+            or "[STUB" in response.content
+            or architecture.strip() == "(architecture document content)"
+            or milestone.strip() == "(milestone 1 specification content)"
+        )
+
+        if is_stub:
+            if args.verbose:
+                print("[INFO] Using stub generation (Lead DEV in stub mode)")
+            architecture = generate_stub_architecture(brief)
+            milestone = generate_stub_milestone(brief)
+
+    except Exception as e:
+        print(f"[ERROR] Lead DEV communication failed: {e}")
+        return 1
+
+    # Write output files
+    success = write_output_files(
+        architecture,
+        milestone,
+        global_docs_path,
+        milestones_path,
+        dry_run=args.dry_run,
+        verbose=args.verbose,
+    )
+
+    if not success:
+        return 3
+
+    # Summary
+    print("[INCEPTION COMPLETE]")
+    print(f"  Architecture: {global_docs_path / 'ARCHITECTURE.md'}")
+    print(f"  Milestone 1:  {milestones_path / 'M1_Init.md'}")
+    print("\nNext steps:")
+    print("  1. Review the generated documents")
+    print("  2. Run: python tools/status_check.py")
+    print("  3. Start implementing Phase 1")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
