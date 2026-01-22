@@ -6,23 +6,23 @@ Build the "Inception Engine" to enable autonomous project bootstrapping. The goa
 ## Phases
 
 ### Phase 1: Ingest Capability
-- [ ] **Tool Implementation:** Create `tools/ingest_brief.py`.
+- [x] **Tool Implementation:** Create `tools/ingest_brief.py`.
     - **Input:** Accepts a raw text string or a filepath via command line arguments.
     - **Logic:** Constructs a "Project Inception" prompt containing the brief and sends it to the Lead DEV.
     - **Output:** Automatically generates `docs/00_global/ARCHITECTURE.md` and `docs/01_milestones/M1_Init.md` based on the Lead DEV's response.
-- [ ] **Integration:** Ensure the tool handles directory creation if `docs/` paths do not exist.
+- [x] **Integration:** Ensure the tool handles directory creation if `docs/` paths do not exist.
 
 ### Phase 2: Continuous Progression
-- [ ] **Tool Implementation:** Create `tools/fetch_next.py`.
+- [x] **Tool Implementation:** Create `tools/fetch_next.py`.
     - **Trigger:** Designed to be called when a milestone is 100% complete.
     - **Logic:**
         1. Archives the current specification (e.g., moves to `docs/history/`).
         2. Sends a query to Lead DEV: "Milestone X is complete. What is the next logical step?"
         3. Writes the response to a new file (e.g., `docs/01_milestones/M{X+1}_Title.md`).
-- [ ] **Safety:** Ensure it doesn't overwrite existing incomplete milestones without confirmation.
+- [x] **Safety:** Ensure it doesn't overwrite existing incomplete milestones without confirmation.
 
 ### Phase 3: The Bootloader
-- [ ] **Script Implementation:** Create `hmas_boot.sh` (Master Shell Script).
+- [x] **Script Implementation:** Create `hmas_boot.sh` (Master Shell Script).
     - **Environment:** Checks for and creates the Python virtual environment (`.venv`) if missing.
     - **Dependencies:** Installs `tools/requirements.txt`.
     - **Configuration:** Verifies existence of `.env` or API keys.
@@ -55,6 +55,6 @@ To verify the Inception Engine works:
 4.  **Check:** Verify that a new Milestone 1 and Architecture doc have been created for the calculator.
 
 ## Success Criteria
-- **Autonomous Bootstrap:** The system can go from a one-line prompt to a documented plan (`M1_Init.md`) without human editing.
-- **Seamless Continuity:** `fetch_next.py` correctly identifies the next logical step after a milestone is marked complete.
-- **One-Click Start:** `hmas_boot.sh` successfully sets up the environment and gets the Senior DEV ready to work with minimal human intervention.
+- [x] **Autonomous Bootstrap:** The system can go from a one-line prompt to a documented plan (`M1_Init.md`) without human editing.
+- [x] **Seamless Continuity:** `fetch_next.py` correctly identifies the next logical step after a milestone is marked complete.
+- [x] **One-Click Start:** `hmas_boot.sh` successfully sets up the environment and gets the Senior DEV ready to work with minimal human intervention.
