@@ -1,0 +1,15 @@
+# HMAS Bridge Layer Dependencies
+# Python 3.8+ required
+
+# YAML parsing for configuration files
+PyYAML>=6.0
+
+# Note: All other dependencies are from the Python standard library:
+# - argparse (argument parsing)
+# - json (JSON serialization)
+# - subprocess (git commands)
+# - pathlib (path handling)
+# - datetime (timestamps)
+# - dataclasses (data structures)
+# - typing (type hints)
+# - enum (enumerations)

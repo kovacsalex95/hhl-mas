@@ -1,0 +1,33 @@
+# HMAS Bridge Layer Configuration
+# This file configures the Bridge Layer tools for communication between
+# Senior DEV (Claude Code) and Lead DEV (Gemini).
+
+bridge:
+  # Lead DEV connection settings
+  lead_dev:
+    interface: "gemini-cli"  # or "api" (future)
+    timeout: 30  # seconds
+    retry_count: 3
+    retry_delay: 5  # seconds
+
+  # Context aggregation settings
+  context:
+    max_tokens: 8000
+    include_architecture: true
+    include_roadmap: false  # only when needed
+    truncation_strategy: "recent_first"
+
+  # Output settings
+  output:
+    default_format: "text"  # text, json, markdown
+    include_timestamps: true
+    log_queries: true
+    log_file: "tools/logs/bridge.log"
+
+# Project settings
+project:
+  docs_path: "docs/"
+  milestones_path: "docs/01_milestones/"
+  architecture_file: "docs/00_global/ARCHITECTURE.md"
+  roadmap_file: "docs/00_global/ROADMAP.md"
+  workflow_file: "docs/00_global/WORKFLOW.md"
