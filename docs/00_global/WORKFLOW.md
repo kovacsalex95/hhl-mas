@@ -3,53 +3,447 @@
 This document details the **Hierarchical Multi-Agent System (HMAS)** protocol for software development.
 
 ## 1. The Core Thesis
-Traditional AI coding fails because of **Context Drift**. This protocol solves this by decoupling **Context (Memory/Strategy)** from **Execution (Logic/Coding)** and utilizing a **Pull-Based** communication model.
+
+Traditional AI coding fails because of **Context Drift**—as conversations grow, AI agents lose track of earlier decisions, introduce contradictions, and forget architectural constraints. This protocol solves this by:
+
+1. **Decoupling Context from Execution:** Strategy (Lead DEV) is separated from implementation (Senior DEV)
+2. **Pull-Based Communication:** Senior DEV actively requests only the context it needs, when it needs it
+3. **Lean Context Windows:** Each query aggregates only relevant documentation, preventing bloat
+
+### Why Pull-Based Over Push-Based?
+
+| Aspect | Push-Based (Traditional) | Pull-Based (HMAS) |
+|--------|--------------------------|-------------------|
+| Context Flow | Lead pushes instructions to Senior | Senior pulls context from Lead |
+| Context Size | Grows unbounded over time | Stays lean per-query |
+| Senior DEV Role | Passive executor waiting for orders | Proactive engineer driving progress |
+| Lead DEV Role | Active manager constantly directing | Reactive oracle responding to queries |
+| Drift Risk | High - accumulated context diverges | Low - fresh context per interaction |
 
 ## 2. Roles (The Triangle of Power)
 
+```
+                    ┌─────────────┐
+                    │     CTO     │
+                    │   (Human)   │
+                    │ "The Stop   │
+                    │   Button"   │
+                    └──────┬──────┘
+                           │
+              Business Alignment & UAT
+                           │
+         ┌─────────────────┴─────────────────┐
+         │                                   │
+         ▼                                   ▼
+┌─────────────────┐                 ┌─────────────────┐
+│    Lead DEV     │◄────Bridge─────►│   Senior DEV    │
+│    (Gemini)     │    (Pull)       │    (Claude)     │
+│  "The Brain"    │                 │  "The Hands"    │
+│   Reactive      │                 │   Proactive     │
+└─────────────────┘                 └─────────────────┘
+```
+
 ### 2.1 CTO (Human Operator)
-- **Access:** Root / God Mode.
-- **Function:** "The Stop Button." Ensures the project aligns with business value.
-- **Deliverables:** Project briefs, UAT logs, Green lights.
+- **Access:** Root / God Mode
+- **Function:** "The Stop Button." Ensures the project aligns with business value
+- **Interactions:**
+  - Provides initial project briefs
+  - Performs UAT (User Acceptance Testing)
+  - Grants green lights for phase progression
+  - Can intervene at any point to redirect
+- **Deliverables:** Project briefs, UAT logs, Go/No-Go decisions
 
 ### 2.2 Lead DEV (The "Brain" - Gemini CLI)
-- **Persona:** Engineering Manager and Software Architect.
-- **Function:** Manages global state, documentation, and high-level planning.
-- **Interaction:** Passive/Reactive. Responds to queries from Senior DEV via the Bridge.
-- **Deliverables:** `ARCHITECTURE.md`, Milestone Specs, responses to `ask_lead`.
+- **Persona:** Engineering Manager and Software Architect
+- **Function:** Manages global state, documentation, and high-level planning
+- **Interaction Model:** **Passive/Reactive**
+  - Does NOT initiate communication with Senior DEV
+  - Responds ONLY when queried via the Bridge
+  - Maintains the "source of truth" in documentation
+- **Context Responsibility:** Owns the global project context in `.gemini/` and `docs/`
+- **Deliverables:**
+  - `ARCHITECTURE.md` - System architecture and technical decisions
+  - `ROADMAP.md` - High-level project timeline
+  - Milestone Specs in `docs/01_milestones/`
+  - Responses to `ask_lead` queries
 
 ### 2.3 Senior DEV (The "Hands" - Claude Code)
-- **Persona:** Pragmatic Software Engineer.
-- **Function:** Executes plans, writes code, runs tests.
-- **Interaction:** Active/Pull. Uses `tools/` to fetch context.
-- **Deliverables:** Source code, Unit tests, Technical Plans.
+- **Persona:** Pragmatic Software Engineer
+- **Function:** Executes plans, writes code, runs tests, drives progress
+- **Interaction Model:** **Active/Pull**
+  - Proactively pulls context when needed
+  - Does NOT wait for instructions to be pushed
+  - Uses `tools/` to fetch specific context
+- **Context Responsibility:** Maintains local execution context; requests global context on-demand
+- **Deliverables:**
+  - Source code and implementation
+  - Unit tests and integration tests
+  - Technical Plans for milestone execution
+  - Progress reports via `report_progress`
 
 ## 3. Inter-Agent Communication (The Bridge)
-The Senior DEV **pulls** instructions rather than waiting for them.
 
-- **Clarification:** `python tools/ask_lead.py "How should I handle the user auth?"`
-- **Progress:** `python tools/report_progress.py --phase 1 --status done`
+The Bridge Layer is the communication mechanism between Senior DEV and Lead DEV. It enforces the **pull-based model** by providing tools that Senior DEV uses to request context.
+
+### 3.1 Bridge Tools Overview
+
+| Tool | Purpose | Direction | When to Use |
+|------|---------|-----------|-------------|
+| `ask_lead` | Query for clarification or decisions | Senior → Lead | Ambiguous requirements, architectural questions |
+| `report_progress` | Report phase/task completion | Senior → Lead | After completing a phase or significant milestone |
+| `status_check` | Validate alignment with plan | Senior → Lead | Before starting work, mid-execution validation |
+
+### 3.2 Tool Usage Guide
+
+#### `ask_lead` - Clarification Queries
+
+**Purpose:** Request architectural decisions, clarify requirements, or get guidance on implementation approaches.
+
+**When to use:**
+- Requirements are ambiguous or incomplete
+- Multiple valid implementation approaches exist
+- Need to validate an assumption before proceeding
+- Encountering unexpected edge cases not covered in spec
+
+**When NOT to use:**
+- Implementation details you can decide independently
+- Standard coding patterns/best practices
+- Information already documented in milestone specs
+
+**Syntax:**
+```bash
+python tools/ask_lead.py "<your question>"
+```
+
+**Examples:**
+```bash
+# Good: Architectural decision needed
+python tools/ask_lead.py "Should user sessions persist across server restarts? The spec doesn't mention session storage strategy."
+
+# Good: Clarifying ambiguous requirement
+python tools/ask_lead.py "The spec says 'handle errors gracefully' - should this include retry logic or just user-friendly messages?"
+
+# Bad: Implementation detail
+python tools/ask_lead.py "Should I use a for loop or while loop here?"  # Decide this yourself
+```
+
+#### `report_progress` - Progress Reporting
+
+**Purpose:** Notify the system of phase completion, enabling Lead DEV to update global state and unlock next phases.
+
+**When to use:**
+- Completed a phase in the Technical Plan
+- Reached a significant milestone checkpoint
+- Need to signal readiness for UAT
+- Encountered a blocker requiring escalation
+
+**Syntax:**
+```bash
+python tools/report_progress.py --phase <N> --status <done|blocked|review>
+```
+
+**Arguments:**
+- `--phase`: Phase number from the Technical Plan
+- `--status`: Current status
+  - `done`: Phase completed successfully
+  - `blocked`: Cannot proceed without intervention
+  - `review`: Ready for human/Lead DEV review
+
+**Examples:**
+```bash
+# Phase completed successfully
+python tools/report_progress.py --phase 1 --status done
+
+# Blocked on external dependency
+python tools/report_progress.py --phase 2 --status blocked
+
+# Ready for code review
+python tools/report_progress.py --phase 3 --status review
+```
+
+#### `status_check` - Alignment Validation
+
+**Purpose:** Validate current work against the active plan; ensure no drift has occurred.
+
+**When to use:**
+- Starting work on a new phase
+- After returning from a context switch
+- When uncertain if implementation matches spec
+- Periodic sanity checks during long tasks
+
+**Syntax:**
+```bash
+python tools/status_check
+```
+
+### 3.3 Decision Tree: Which Tool to Use?
+
+```mermaid
+flowchart TD
+    A[Senior DEV needs to communicate] --> B{What type?}
+
+    B -->|Need information/guidance| C{Is it in the docs?}
+    C -->|Yes| D[Read the docs directly]
+    C -->|No| E{Is it architectural/requirements?}
+    E -->|Yes| F[ask_lead]
+    E -->|No - Implementation detail| G[Decide independently]
+
+    B -->|Reporting status| H{What happened?}
+    H -->|Completed a phase| I[report_progress --status done]
+    H -->|Cannot proceed| J[report_progress --status blocked]
+    H -->|Need review| K[report_progress --status review]
+
+    B -->|Checking alignment| L[status_check]
+```
 
 ## 4. The Grand Workflow Lifecycle
 
 ### Phase 1: Inception & Architecture
-- CTO writes `project_brief.txt`.
-- Lead DEV generates `ARCHITECTURE.md` and `ROADMAP.md`.
+
+**Owner:** CTO + Lead DEV
+
+1. CTO creates `project_brief.txt` with business requirements
+2. Lead DEV analyzes brief and generates:
+   - `docs/00_global/ARCHITECTURE.md`
+   - `docs/00_global/ROADMAP.md`
+   - Initial milestone specs in `docs/01_milestones/`
+3. CTO reviews and approves architecture
+
+**Senior DEV involvement:** None (may be consulted for technical feasibility)
 
 ### Phase 2: The Build Loop (Feature Milestones)
-- **2A: Planning**: Lead DEV publishes Milestone Spec in `docs/01_milestones/`. Senior DEV reads it and creates a Technical Plan.
-- **2B: Execution**: 
-    1. Senior DEV pulls current phase context.
-    2. Senior DEV writes code/tests.
-    3. Senior DEV runs `tools/report_progress.py`.
-    4. Loop.
+
+This is the core development cycle, repeated for each milestone.
+
+```mermaid
+flowchart TD
+    subgraph "2A: Planning"
+        A1[Lead DEV publishes Milestone Spec] --> A2[Senior DEV reads spec]
+        A2 --> A3[Senior DEV creates Technical Plan]
+        A3 --> A4{Questions?}
+        A4 -->|Yes| A5[ask_lead for clarification]
+        A5 --> A4
+        A4 -->|No| A6[Technical Plan ready]
+    end
+
+    subgraph "2B: Execution Loop"
+        B1[Read phase requirements] --> B2[status_check]
+        B2 --> B3[Implement phase]
+        B3 --> B4[Run tests]
+        B4 --> B5{Tests pass?}
+        B5 -->|No| B3
+        B5 -->|Yes| B6[Atomic commit]
+        B6 --> B7[report_progress]
+        B7 --> B8{More phases?}
+        B8 -->|Yes| B1
+        B8 -->|No| B9[Milestone complete]
+    end
+
+    A6 --> B1
+    B9 --> C[Ready for UAT]
+```
+
+#### 2A: Planning Sub-Phase
+
+1. **Lead DEV publishes spec:** Milestone specification appears in `docs/01_milestones/`
+2. **Senior DEV reads spec:** Thoroughly reviews the milestone requirements
+3. **Senior DEV creates Technical Plan:** Breaks milestone into executable phases
+4. **Clarification loop:** Use `ask_lead` for any ambiguities
+5. **Plan finalized:** Technical Plan is ready for execution
+
+#### 2B: Execution Sub-Phase (Per Phase)
+
+1. **Pull context:** Read current phase requirements from Technical Plan
+2. **Validate alignment:** Run `status_check` to ensure no drift
+3. **Implement:** Write code and tests for the phase
+4. **Test:** Run all relevant tests
+5. **Commit:** Create atomic commit for the phase (see Section 5)
+6. **Report:** Run `report_progress --phase N --status done`
+7. **Loop:** Return to step 1 for next phase
 
 ### Phase 3: Human Interface (UAT)
-- CTO tests features; logs in `docs/99_audit/`.
+
+**Owner:** CTO
+
+1. CTO tests delivered features
+2. Feedback logged in `docs/99_audit/`
+3. Issues tagged for next iteration or hotfix
+
+**Senior DEV involvement:** Responds to bug reports, implements fixes
 
 ### Phase 4: Consolidation
-- Lead DEV synthesizes feedback.
-- Senior DEV pulls consolidation plan.
+
+**Owner:** Lead DEV + Senior DEV
+
+1. Lead DEV synthesizes UAT feedback
+2. Lead DEV updates documentation with learnings
+3. Senior DEV pulls consolidation tasks via Bridge
+4. Technical debt addressed if prioritized
 
 ### Phase 5: Deployment
-- Senior DEV generates artifacts using Lead DEV's environment context.
+
+**Owner:** Senior DEV (with Lead DEV guidance)
+
+1. Senior DEV queries Lead DEV for deployment requirements
+2. Senior DEV generates deployment artifacts
+3. Senior DEV executes deployment procedure
+4. Status reported via `report_progress`
+
+## 5. Atomic Commit Strategy
+
+Every phase completion in a Technical Plan corresponds to exactly one git commit. This ensures:
+
+- **Traceability:** Each commit maps to a documented phase
+- **Reviewability:** Changes are logically grouped
+- **Revertability:** Issues can be isolated to specific phases
+
+### Commit Message Format
+
+```
+<type>: <short description>
+
+[Optional body with details]
+
+Phase: <milestone>.<phase>
+```
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation only
+- `refactor`: Code restructuring
+- `test`: Test additions/modifications
+- `chore`: Maintenance tasks
+
+**Examples:**
+```
+feat: implement user authentication flow
+
+Added login, logout, and session management endpoints.
+Password hashing uses bcrypt with cost factor 12.
+
+Phase: M2.3
+```
+
+```
+docs: comprehensive workflow and architecture documentation
+
+Phase: M1.2
+```
+
+### Commit Timing
+
+- Commit **after** tests pass for the phase
+- Commit **before** running `report_progress`
+- Never commit partial/broken phases
+
+## 6. Error Handling & Edge Cases
+
+### 6.1 Query Failures
+
+**Scenario:** `ask_lead` returns an error or no response
+
+**Resolution:**
+1. Retry once after brief delay
+2. Check if Lead DEV session is active
+3. If persistent, report via `report_progress --status blocked`
+4. Document issue in local notes for CTO awareness
+
+### 6.2 Conflicting Information
+
+**Scenario:** Documentation contradicts `ask_lead` response
+
+**Resolution:**
+1. Always prefer the most recent `ask_lead` response (newer context)
+2. Use `ask_lead` to explicitly clarify the conflict
+3. Request Lead DEV update documentation if needed
+
+### 6.3 Scope Creep Detection
+
+**Scenario:** Implementation reveals requirements not in spec
+
+**Resolution:**
+1. Do NOT implement undocumented requirements independently
+2. Use `ask_lead` to clarify if the requirement is in scope
+3. If out of scope, document for future milestone
+4. Proceed only with what's explicitly specified
+
+### 6.4 Blocked Progress
+
+**Scenario:** Cannot proceed with current phase
+
+**Resolution:**
+1. Document the blocker clearly
+2. Run `report_progress --phase N --status blocked`
+3. Include blocker details in the report
+4. Wait for Lead DEV/CTO intervention or proceed to non-blocked work
+
+### 6.5 Context Loss Recovery
+
+**Scenario:** Senior DEV session restarts or loses context
+
+**Resolution:**
+1. Read the active Technical Plan
+2. Check git log for last completed phase
+3. Run `status_check` to validate state
+4. Resume from the appropriate phase
+
+## 7. Best Practices
+
+### For Senior DEV (Claude Code)
+
+1. **Pull Early, Pull Often:** Don't hesitate to use `ask_lead` when uncertain
+2. **Stay Lean:** Only request the context you need for the current phase
+3. **Report Promptly:** Run `report_progress` immediately after phase completion
+4. **Trust the Plan:** Follow the Technical Plan; don't deviate without clarification
+5. **Atomic Work:** Complete one phase fully before starting the next
+
+### For Lead DEV (Gemini CLI)
+
+1. **Be Explicit:** Responses to `ask_lead` should be unambiguous and actionable
+2. **Update Docs:** Keep documentation current with all decisions
+3. **Stay Reactive:** Don't push unsolicited instructions to Senior DEV
+4. **Scope Clearly:** Milestone specs should have clear boundaries
+
+### For CTO (Human)
+
+1. **Clear Briefs:** Initial requirements should be as detailed as possible
+2. **Timely UAT:** Don't let completed work sit without testing
+3. **Trust the System:** Let agents work autonomously within the protocol
+4. **Intervene Decisively:** When you do intervene, be clear and explicit
+
+## 8. Quick Reference
+
+### Senior DEV Daily Workflow
+
+```bash
+# 1. Check current state
+python tools/status_check
+
+# 2. Review current phase in Technical Plan
+# (Read docs/01_milestones/current_milestone.md)
+
+# 3. If questions arise
+python tools/ask_lead.py "Your question here"
+
+# 4. Implement and test
+
+# 5. Commit
+git add -A && git commit -m "feat: description
+
+Phase: MX.Y"
+
+# 6. Report completion
+python tools/report_progress.py --phase Y --status done
+
+# 7. Repeat for next phase
+```
+
+### Emergency Procedures
+
+| Situation | Action |
+|-----------|--------|
+| Lead DEV unresponsive | Notify CTO, document state, pause |
+| Tests consistently failing | `report_progress --status blocked` |
+| Spec has critical error | `ask_lead` for clarification, don't proceed |
+| Need CTO decision | `report_progress --status review` with notes |
