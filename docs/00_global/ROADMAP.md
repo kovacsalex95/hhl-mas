@@ -5,13 +5,13 @@
 - [x] Document HMAS workflow.
 - [x] Create initial prompt kits.
 
-## Milestone 2: Toolkit Implementation (In Progress)
+## Milestone 2: Toolkit Implementation (Completed)
 - [x] Refine system prompts (Pull-Based Model).
 - [x] Implement automation scripts (`tools/`).
-- [ ] Finalize Toolkit Documentation (`tools/README.md`).
+- [x] Finalize Toolkit Documentation (`tools/README.md`).
 - [x] Establish Bridge Layer protocols.
 
-## Milestone 3: Real-world Application (Next)
-- Apply HMAS to a target project.
-- Evaluate effectiveness and refine protocols.
-- Create a "Demo Feature" to showcase the workflow in action.
+## Milestone 3: Real-world Application (In Progress)
+- [ ] Apply HMAS to a target project (The Pilot).
+- [ ] Evaluate effectiveness and refine protocols.
+- [ ] Create a "Demo Feature" to showcase the workflow in action.
