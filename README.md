@@ -29,5 +29,5 @@ The project follows a strict documentation and execution skeleton:
 ## Getting Started
 
 1.  Review the [Architecture](./docs/00_global/ARCHITECTURE.md) and [Workflow](./docs/00_global/WORKFLOW.md).
-2.  Explore the [Current Milestone](./docs/01_milestones/M1_Documentation.md).
+2.  Check the [Roadmap](./docs/00_global/ROADMAP.md) for project status.
 3.  Utilize the `tools/` directory to facilitate inter-agent communication.
