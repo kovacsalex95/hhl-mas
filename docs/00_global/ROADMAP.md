@@ -8,6 +8,7 @@
 ## Milestone 2: Toolkit Implementation (Completed)
 - [x] Refine system prompts (Pull-Based Model).
 - [x] Implement automation scripts (`tools/`).
+- [x] Finalize Toolkit Documentation (`tools/README.md`).
 - [x] Establish Bridge Layer protocols.
 
 ## Milestone 3: Real-world Application (Next)
