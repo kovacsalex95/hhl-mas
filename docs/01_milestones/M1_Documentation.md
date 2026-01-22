@@ -6,8 +6,8 @@ Establish the baseline documentation, formalize the HMAS workflow, and implement
 ## Deliverables
 - [x] Repository Skeleton (`docs/`, `.gemini/`, etc.)
 - [x] Comprehensive Workflow Guide (Updated for Pull-Model).
-- [ ] **The HHL-Bridge Tooling** (`tools/` directory).
-- [ ] Initial Prompt Kits.
+- [x] **The HHL-Bridge Tooling** (`tools/` directory).
+- [x] Initial Prompt Kits.
 
 ## Tasks
 
@@ -20,20 +20,18 @@ Establish the baseline documentation, formalize the HMAS workflow, and implement
 - [x] Update `docs/00_global/ARCHITECTURE.md` to include the Bridge Layer.
 
 ### 3. Bridge Layer Implementation
-- [ ] Create `tools/ask_lead.py`:
+- [x] Create `tools/ask_lead.py`:
     - Function: Aggregates relevant `docs/` context and sends a prompt to the Lead DEV.
     - Usage: `python tools/ask_lead.py "Question"`
-- [ ] Create `tools/report_progress.py`:
+- [x] Create `tools/report_progress.py`:
     - Function: Updates the current Technical Plan and logs progress to the Lead DEV.
 
 ### 4. Prompt Kit Development (Claude Code Task)
-**Prompt for Claude Code:**
-> "Based on the updated HMAS workflow (Pull-Based), please create:
-> 1. System Prompts for Lead and Senior DEVs.
-> 2. `ask_lead` and `report_progress` script specifications.
-> Save these in `.gemini/prompts/`."
+- [x] Develop System Prompts for Lead and Senior DEVs.
+- [x] Create `ask_lead` and `report_progress` script specifications.
+- [x] Save these in `.gemini/prompts/`.
 
 ## Success Criteria
-- The "Bridge" scripts are executable and functional.
-- Documentation accurately reflects the tool usage.
-- Senior DEV can autonomously fetch instructions using the tools.
+- [x] The "Bridge" scripts are executable and functional.
+- [x] Documentation accurately reflects the tool usage.
+- [x] Senior DEV can autonomously fetch instructions using the tools.
