@@ -481,6 +481,9 @@ def main() -> int:
     print(f"  1. Review the generated milestone: {next_path}")
     print("  2. Update status_check.py config if needed")
     print(f"  3. Start implementing {next_id} Phase 1")
+    print("")
+    print("To start a new session for the next milestone, run:")
+    print(f"  python tools/handoff.py --milestone {next_id}")
 
     return 0
 
