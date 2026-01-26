@@ -5,6 +5,7 @@
 bridge:
   # Lead DEV connection settings
   lead_dev:
+    mode: "interactive"  # "interactive", "stub", or "api" (future)
     interface: "gemini-cli"  # or "api" (future)
     timeout: 30  # seconds
     retry_count: 3

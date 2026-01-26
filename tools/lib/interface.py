@@ -2,13 +2,25 @@
 Lead DEV communication interface for HMAS Bridge Layer.
 
 This module provides the interface for communicating with the Lead DEV (Gemini).
-Currently implemented as a stub that simulates responses for testing.
+Supports multiple modes:
+- interactive: User provides responses via CLI input
+- stub: Returns mock responses for testing
+- api: Future API integration (not yet implemented)
 """
 
+import sys
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional
 
 from .config import Config
+
+
+class InterfaceMode(Enum):
+    """Communication modes for Lead DEV interface."""
+    INTERACTIVE = "interactive"
+    STUB = "stub"
+    API = "api"
 
 
 class LeadDevResponse:
@@ -45,25 +57,41 @@ class LeadDevInterface:
     """
     Interface for communicating with Lead DEV.
 
-    Currently implemented as a stub that:
-    - Prints the query/report that would be sent
-    - Returns a mock response indicating the tool is working
-    - Logs the context that would be aggregated
+    Supports multiple communication modes:
+    - interactive: Displays context and prompts user for input via CLI
+    - stub: Returns mock responses for testing
+    - api: Future Gemini API integration
 
-    Future implementations will integrate with Gemini CLI.
+    The mode can be set via config or constructor parameter.
     """
 
-    def __init__(self, config: Optional[Config] = None, verbose: bool = False):
+    def __init__(
+        self,
+        config: Optional[Config] = None,
+        verbose: bool = False,
+        mode: Optional[str] = None,
+    ):
         """
         Initialize the Lead DEV interface.
 
         Args:
             config: Configuration instance. If None, creates a new one.
             verbose: Whether to print debug information.
+            mode: Interface mode override ('interactive', 'stub', 'api').
+                  If None, reads from config or defaults to 'interactive'.
         """
         self.config = config or Config()
         self.verbose = verbose
-        self._stub_mode = True  # Always stub mode for now
+
+        # Determine mode: explicit > config > default
+        if mode:
+            self._mode = InterfaceMode(mode)
+        else:
+            config_mode = self.config.get("bridge.lead_dev", "mode")
+            if config_mode:
+                self._mode = InterfaceMode(config_mode)
+            else:
+                self._mode = InterfaceMode.INTERACTIVE  # Default to interactive
 
     def query(
         self,
@@ -80,11 +108,14 @@ class LeadDevInterface:
         Returns:
             LeadDevResponse with the result
         """
-        if self._stub_mode:
+        if self._mode == InterfaceMode.STUB:
             return self._stub_query(question, context)
-
-        # Future: Implement actual Gemini CLI integration
-        raise NotImplementedError("Live Lead DEV integration not yet implemented")
+        elif self._mode == InterfaceMode.INTERACTIVE:
+            return self._interactive_query(question, context)
+        elif self._mode == InterfaceMode.API:
+            raise NotImplementedError("API mode not yet implemented")
+        else:
+            raise ValueError(f"Unknown interface mode: {self._mode}")
 
     def report_progress(
         self,
@@ -107,11 +138,14 @@ class LeadDevInterface:
         Returns:
             LeadDevResponse with acknowledgment
         """
-        if self._stub_mode:
+        if self._mode == InterfaceMode.STUB:
             return self._stub_report_progress(phase, status, message, milestone, context)
-
-        # Future: Implement actual Gemini CLI integration
-        raise NotImplementedError("Live Lead DEV integration not yet implemented")
+        elif self._mode == InterfaceMode.INTERACTIVE:
+            return self._interactive_report_progress(phase, status, message, milestone, context)
+        elif self._mode == InterfaceMode.API:
+            raise NotImplementedError("API mode not yet implemented")
+        else:
+            raise ValueError(f"Unknown interface mode: {self._mode}")
 
     def validate_status(
         self,
@@ -126,11 +160,14 @@ class LeadDevInterface:
         Returns:
             LeadDevResponse with validation result
         """
-        if self._stub_mode:
+        if self._mode == InterfaceMode.STUB:
             return self._stub_validate_status(context)
-
-        # Future: Implement actual Gemini CLI integration
-        raise NotImplementedError("Live Lead DEV integration not yet implemented")
+        elif self._mode == InterfaceMode.INTERACTIVE:
+            return self._interactive_validate_status(context)
+        elif self._mode == InterfaceMode.API:
+            raise NotImplementedError("API mode not yet implemented")
+        else:
+            raise ValueError(f"Unknown interface mode: {self._mode}")
 
     def _log_to_file(self, message: str) -> None:
         """Log message to the configured log file."""
@@ -247,4 +284,176 @@ class LeadDevInterface:
         return LeadDevResponse(
             success=True,
             content=response_content,
+        )
+
+    # =========================================================================
+    # Interactive Mode Implementations
+    # =========================================================================
+
+    def _print_separator(self, char: str = "=", width: int = 70) -> None:
+        """Print a visual separator line."""
+        print(char * width, file=sys.stderr)
+
+    def _print_context_summary(self, context: dict[str, str]) -> None:
+        """Print a summary of the aggregated context."""
+        print("\n[AGGREGATED CONTEXT]", file=sys.stderr)
+        self._print_separator("-")
+
+        for key, value in context.items():
+            if value:
+                # Truncate long values for display
+                preview = value[:500] + "..." if len(value) > 500 else value
+                print(f"\n--- {key.upper()} ---", file=sys.stderr)
+                print(preview, file=sys.stderr)
+
+        self._print_separator("-")
+        total_chars = sum(len(v) for v in context.values())
+        print(f"Total context size: {total_chars} characters", file=sys.stderr)
+
+    def _get_user_input(self, prompt: str) -> str:
+        """
+        Prompt the user for input.
+
+        Args:
+            prompt: The prompt to display
+
+        Returns:
+            User's input as a string
+        """
+        self._print_separator()
+        print(f"\n{prompt}", file=sys.stderr)
+        print("(Enter your response, then press Enter twice or Ctrl+D to submit)", file=sys.stderr)
+        self._print_separator()
+
+        lines = []
+        empty_line_count = 0
+
+        try:
+            while True:
+                line = input()
+                if line == "":
+                    empty_line_count += 1
+                    if empty_line_count >= 2:
+                        # Two consecutive empty lines signals end of input
+                        break
+                    lines.append(line)
+                else:
+                    empty_line_count = 0
+                    lines.append(line)
+        except EOFError:
+            # Ctrl+D pressed
+            pass
+
+        return "\n".join(lines).strip()
+
+    def _interactive_query(
+        self,
+        question: str,
+        context: dict[str, str],
+    ) -> LeadDevResponse:
+        """Interactive implementation for query - prompts user for response."""
+        self._print_separator("=")
+        print("\n[QUERY TO LEAD DEV]", file=sys.stderr)
+        print(f"\nQuestion: {question}", file=sys.stderr)
+
+        # Display context summary
+        self._print_context_summary(context)
+
+        # Log the query
+        self._log_to_file(f"INTERACTIVE QUERY: {question}")
+
+        # Get user response
+        user_response = self._get_user_input("Please provide your response as Lead DEV:")
+
+        if not user_response:
+            return LeadDevResponse(
+                success=False,
+                content="",
+                error_code=2,
+                error_message="No response provided",
+            )
+
+        self._log_to_file(f"INTERACTIVE RESPONSE: {user_response[:100]}...")
+
+        # Extract document names from context for reporting
+        context_used = []
+        if context.get("documents"):
+            docs_content = context["documents"]
+            for line in docs_content.split("\n"):
+                if line.startswith("=== ") and line.endswith(" ==="):
+                    doc_name = line[4:-4]
+                    context_used.append(doc_name)
+
+        return LeadDevResponse(
+            success=True,
+            content=user_response,
+            context_used=context_used,
+        )
+
+    def _interactive_report_progress(
+        self,
+        phase: int,
+        status: str,
+        message: Optional[str],
+        milestone: str,
+        context: dict[str, str],
+    ) -> LeadDevResponse:
+        """Interactive implementation for progress report - prompts user for acknowledgment."""
+        self._print_separator("=")
+        print("\n[PROGRESS REPORT TO LEAD DEV]", file=sys.stderr)
+        print(f"\nMilestone: {milestone}", file=sys.stderr)
+        print(f"Phase: {phase}", file=sys.stderr)
+        print(f"Status: {status}", file=sys.stderr)
+        if message:
+            print(f"Message: {message}", file=sys.stderr)
+
+        # Display context summary
+        self._print_context_summary(context)
+
+        # Log the report
+        self._log_to_file(f"INTERACTIVE PROGRESS: Phase {phase} ({status}) - {milestone}")
+
+        # Get user acknowledgment/response
+        user_response = self._get_user_input(
+            "Please acknowledge or provide guidance as Lead DEV:"
+        )
+
+        if not user_response:
+            # Empty response is acceptable for progress reports
+            user_response = f"Acknowledged: Phase {phase} marked as '{status}'"
+
+        self._log_to_file(f"INTERACTIVE ACK: {user_response[:100]}...")
+
+        return LeadDevResponse(
+            success=True,
+            content=user_response,
+        )
+
+    def _interactive_validate_status(
+        self,
+        context: dict[str, str],
+    ) -> LeadDevResponse:
+        """Interactive implementation for status validation - prompts user for validation."""
+        self._print_separator("=")
+        print("\n[STATUS VALIDATION REQUEST]", file=sys.stderr)
+
+        # Display context summary
+        self._print_context_summary(context)
+
+        # Log the validation request
+        self._log_to_file("INTERACTIVE STATUS CHECK: Validation requested")
+
+        # Get user validation response
+        user_response = self._get_user_input(
+            "Please validate the current status as Lead DEV (or provide corrections):"
+        )
+
+        if not user_response:
+            user_response = "Status validated - no issues noted"
+
+        self._log_to_file(f"INTERACTIVE VALIDATION: {user_response[:100]}...")
+
+        return LeadDevResponse(
+            success=True,
+            content=user_response,
         )

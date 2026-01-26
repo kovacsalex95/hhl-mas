@@ -83,6 +83,13 @@ Examples:
         help="Override current phase identifier",
     )
 
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["interactive", "stub", "api"],
+        help="Interface mode: interactive (default), stub (testing), api (future)",
+    )
+
     return parser.parse_args()
 
 
@@ -171,7 +178,7 @@ def main() -> int:
     try:
         config = Config()
         aggregator = ContextAggregator(config)
-        interface = LeadDevInterface(config, verbose=args.verbose)
+        interface = LeadDevInterface(config, verbose=args.verbose, mode=args.mode)
     except Exception as e:
         print(format_error(f"Initialization failed: {e}", args.format))
         return 3
