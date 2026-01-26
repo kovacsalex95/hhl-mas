@@ -93,6 +93,11 @@ The Bridge Layer is the communication infrastructure enabling the pull-based mod
 │  │           │    │ _progress │    │               │       │
 │  └─────┬─────┘    └─────┬─────┘    └───────┬───────┘       │
 │        │                │                  │               │
+│  ┌─────┴─────┐    ┌─────┴─────┐    ┌───────┴───────┐       │
+│  │ handoff   │    │ fetch_next│    │ ingest_brief  │       │
+│  │           │    │           │    │               │       │
+│  └─────┬─────┘    └─────┬─────┘    └───────┬───────┘       │
+│        │                │                  │               │
 │        └────────────────┼──────────────────┘               │
 │                         │                                  │
 │                ┌────────▼────────┐                         │
@@ -103,13 +108,14 @@ The Bridge Layer is the communication infrastructure enabling the pull-based mod
 │                ┌────────▼────────┐                         │
 │                │ Lead DEV        │                         │
 │                │ Interface       │                         │
+│                │ (Interactive)   │                         │
 │                └────────┬────────┘                         │
 └─────────────────────────┼───────────────────────────────────┘
                           │
                           ▼
                    ┌──────────────┐
                    │   Lead DEV   │
-                   │   (Gemini)   │
+                   │   (Human/AI) │
                    └──────────────┘
 ```
 
@@ -120,6 +126,9 @@ tools/
 ├── ask_lead.py           # Query tool for clarifications
 ├── report_progress.py    # Progress reporting tool
 ├── status_check.py       # Alignment validation tool
+├── ingest_brief.py       # Project inception tool
+├── fetch_next.py         # Milestone progression tool
+├── handoff.py            # Session context renewal tool
 ├── lib/
 │   ├── __init__.py
 │   ├── context.py        # Context aggregation logic
@@ -200,17 +209,17 @@ sequenceDiagram
     participant S as Senior DEV
     participant A as ask_lead.py
     participant C as Context Aggregator
-    participant L as Lead DEV
+    participant I as Interface (Interactive)
+    participant L as Lead DEV (User/AI)
 
     S->>A: ask_lead "question"
     A->>C: Request relevant context
-    C->>C: Analyze question type
-    C->>C: Select documents
-    C->>C: Aggregate & truncate
     C-->>A: Context package
-    A->>L: Question + Context
-    L->>L: Process query
-    L-->>A: Response
+    A->>I: Request interaction
+    I->>I: Display Question + Context
+    I->>L: Prompt for input
+    L-->>I: Provide guidance
+    I-->>A: Response content
     A-->>S: Formatted answer
 ```
 
@@ -465,6 +474,36 @@ Action Required: Run 'ask_lead' for remediation guidance
 [END STATUS]
 ```
 
+---
+
+### 4.4 `ingest_brief` - Project Inception
+
+**File:** `tools/ingest_brief.py`
+
+**Purpose:** Bootstrap a new project or module from a raw text brief or file. It autonomously generates `ARCHITECTURE.md` and the initial milestone (`M1_Init.md`).
+
+---
+
+### 4.5 `fetch_next` - Milestone Progression
+
+**File:** `tools/fetch_next.py`
+
+**Purpose:** Automatically transition to the next milestone after completing the current one. It archives the completed milestone and fetches the next specification from Lead DEV.
+
+---
+
+### 4.6 `handoff` - Session Context Renewal
+
+**File:** `tools/handoff.py`
+
+**Purpose:** Generate a "System Prompt" or "Initialization Block" that sums up the current state of the project. This enables starting a fresh Senior DEV session with full context, preventing drift and context window exhaustion.
+
+#### Context Renewal Workflow
+
+1.  **Complete Milestone:** Run `fetch_next.py` to archive the current milestone and prepare the next.
+2.  **Generate Handoff:** Run `handoff.py --next` to generate the initialization prompt.
+3.  **New Session:** Start a new Senior DEV session and paste the handoff prompt.
+
 ## 5. Inter-Agent Communication Flows
 
 ### 5.1 Standard Query Flow
@@ -649,7 +688,16 @@ python tools/ask_lead.py "Your question here"
 python tools/report_progress.py --phase N --status done|blocked|review
 
 # Check alignment
-python tools/status_check
+python tools/status_check.py
+
+# Bootstrap project
+python tools/ingest_brief.py "Brief text"
+
+# Progress to next milestone
+python tools/fetch_next.py
+
+# Generate handoff prompt
+python tools/handoff.py
 ```
 
 ### Exit Codes
@@ -673,9 +721,12 @@ hhl-mas/
 │   ├── 01_milestones/
 │   └── 99_audit/
 ├── tools/
-│   ├── ask_lead.py
-│   ├── report_progress.py
-│   ├── status_check.py
+│   ├── ask_lead.py           # Query tool for clarifications
+│   ├── report_progress.py    # Progress reporting tool
+│   ├── status_check.py       # Alignment validation tool
+│   ├── ingest_brief.py       # Project inception tool
+│   ├── fetch_next.py         # Milestone progression tool
+│   ├── handoff.py            # Session context renewal tool
 │   └── lib/
 └── .gemini/
 ```
