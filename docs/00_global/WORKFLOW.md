@@ -92,88 +92,39 @@ The Bridge Layer is the communication mechanism between Senior DEV and Lead DEV.
 | `ask_lead` | Query for clarification or decisions | Senior → Lead | Ambiguous requirements, architectural questions |
 | `report_progress` | Report phase/task completion | Senior → Lead | After completing a phase or significant milestone |
 | `status_check` | Validate alignment with plan | Senior → Lead | Before starting work, mid-execution validation |
+| `ingest_brief` | Bootstrap new project/milestone | CTO/Lead → System | At project start or major module inception |
+| `fetch_next` | Milestone progression | Senior → Lead | After completing all phases of a milestone |
+| `handoff` | Session context renewal | User/Senior → New Session | When starting a fresh Claude Code session |
 
 ### 3.2 Tool Usage Guide
 
-#### `ask_lead` - Clarification Queries
+[Existing tools: ask_lead, report_progress, status_check documentation...]
 
-**Purpose:** Request architectural decisions, clarify requirements, or get guidance on implementation approaches.
+#### `ingest_brief` - Project Inception
 
-**When to use:**
-- Requirements are ambiguous or incomplete
-- Multiple valid implementation approaches exist
-- Need to validate an assumption before proceeding
-- Encountering unexpected edge cases not covered in spec
+**Purpose:** Convert a raw text brief into a structured HMAS project skeleton.
 
-**When NOT to use:**
-- Implementation details you can decide independently
-- Standard coding patterns/best practices
-- Information already documented in milestone specs
-
-**Syntax:**
+**Usage:**
 ```bash
-python tools/ask_lead.py "<your question>"
+python tools/ingest_brief.py "Build a secure file storage API"
 ```
 
-**Examples:**
+#### `fetch_next` - Milestone Progression
+
+**Purpose:** Transition from one milestone to the next by archiving the current one and fetching the next spec.
+
+**Usage:**
 ```bash
-# Good: Architectural decision needed
-python tools/ask_lead.py "Should user sessions persist across server restarts? The spec doesn't mention session storage strategy."
-
-# Good: Clarifying ambiguous requirement
-python tools/ask_lead.py "The spec says 'handle errors gracefully' - should this include retry logic or just user-friendly messages?"
-
-# Bad: Implementation detail
-python tools/ask_lead.py "Should I use a for loop or while loop here?"  # Decide this yourself
+python tools/fetch_next.py
 ```
 
-#### `report_progress` - Progress Reporting
+#### `handoff` - Session Context Renewal
 
-**Purpose:** Notify the system of phase completion, enabling Lead DEV to update global state and unlock next phases.
+**Purpose:** Generate a "System Prompt" that summarizes everything the Senior DEV needs to know to resume work in a clean session.
 
-**When to use:**
-- Completed a phase in the Technical Plan
-- Reached a significant milestone checkpoint
-- Need to signal readiness for UAT
-- Encountered a blocker requiring escalation
-
-**Syntax:**
+**Usage:**
 ```bash
-python tools/report_progress.py --phase <N> --status <done|blocked|review>
-```
-
-**Arguments:**
-- `--phase`: Phase number from the Technical Plan
-- `--status`: Current status
-  - `done`: Phase completed successfully
-  - `blocked`: Cannot proceed without intervention
-  - `review`: Ready for human/Lead DEV review
-
-**Examples:**
-```bash
-# Phase completed successfully
-python tools/report_progress.py --phase 1 --status done
-
-# Blocked on external dependency
-python tools/report_progress.py --phase 2 --status blocked
-
-# Ready for code review
-python tools/report_progress.py --phase 3 --status review
-```
-
-#### `status_check` - Alignment Validation
-
-**Purpose:** Validate current work against the active plan; ensure no drift has occurred.
-
-**When to use:**
-- Starting work on a new phase
-- After returning from a context switch
-- When uncertain if implementation matches spec
-- Periodic sanity checks during long tasks
-
-**Syntax:**
-```bash
-python tools/status_check
+python tools/handoff.py --next
 ```
 
 ### 3.3 Decision Tree: Which Tool to Use?
@@ -194,6 +145,11 @@ flowchart TD
     H -->|Need review| K[report_progress --status review]
 
     B -->|Checking alignment| L[status_check]
+    
+    B -->|Starting/Ending| M{Goal?}
+    M -->|New project| N[ingest_brief]
+    M -->|Next milestone| O[fetch_next]
+    M -->|Start new session| P[handoff]
 ```
 
 ## 4. The Grand Workflow Lifecycle
@@ -202,54 +158,27 @@ flowchart TD
 
 **Owner:** CTO + Lead DEV
 
-1. CTO creates `project_brief.txt` with business requirements
-2. Lead DEV analyzes brief and generates:
+1. CTO creates `project_brief.txt` or a prompt.
+2. System bootstraps using `python tools/ingest_brief.py`.
+3. System generates:
    - `docs/00_global/ARCHITECTURE.md`
    - `docs/00_global/ROADMAP.md`
    - Initial milestone specs in `docs/01_milestones/`
-3. CTO reviews and approves architecture
-
-**Senior DEV involvement:** None (may be consulted for technical feasibility)
+4. CTO reviews and approves architecture.
 
 ### Phase 2: The Build Loop (Feature Milestones)
 
-This is the core development cycle, repeated for each milestone.
+[Existing content...]
 
-```mermaid
-flowchart TD
-    subgraph "2A: Planning"
-        A1[Lead DEV publishes Milestone Spec] --> A2[Senior DEV reads spec]
-        A2 --> A3[Senior DEV creates Technical Plan]
-        A3 --> A4{Questions?}
-        A4 -->|Yes| A5[ask_lead for clarification]
-        A5 --> A4
-        A4 -->|No| A6[Technical Plan ready]
-    end
+3. **Senior DEV creates Technical Plan:** Breaks milestone into executable phases.
+4. **Clarification loop:** Use `ask_lead` for any ambiguities (now supports **Interactive Mode**).
+5. **Plan finalized:** Technical Plan is ready for execution.
 
-    subgraph "2B: Execution Loop"
-        B1[Read phase requirements] --> B2[status_check]
-        B2 --> B3[Implement phase]
-        B3 --> B4[Run tests]
-        B4 --> B5{Tests pass?}
-        B5 -->|No| B3
-        B5 -->|Yes| B6[Atomic commit]
-        B6 --> B7[report_progress]
-        B7 --> B8{More phases?}
-        B8 -->|Yes| B1
-        B8 -->|No| B9[Milestone complete]
-    end
+#### 2C: Transition Sub-Phase
 
-    A6 --> B1
-    B9 --> C[Ready for UAT]
-```
-
-#### 2A: Planning Sub-Phase
-
-1. **Lead DEV publishes spec:** Milestone specification appears in `docs/01_milestones/`
-2. **Senior DEV reads spec:** Thoroughly reviews the milestone requirements
-3. **Senior DEV creates Technical Plan:** Breaks milestone into executable phases
-4. **Clarification loop:** Use `ask_lead` for any ambiguities
-5. **Plan finalized:** Technical Plan is ready for execution
+1. **Progress:** Run `fetch_next.py` to archive the current milestone.
+2. **Renew:** Run `handoff.py --next` to get the prompt for the next session.
+3. **Boot:** Open a new Senior DEV session and paste the handoff prompt.
 
 #### 2B: Execution Sub-Phase (Per Phase)
 
