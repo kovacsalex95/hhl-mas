@@ -11,6 +11,7 @@ The Bridge Layer enables communication between Senior DEV (Claude Code) and Lead
 | `status_check.py` | Validate current execution state against the active plan |
 | `ingest_brief.py` | Bootstrap new projects from a raw text brief or file |
 | `fetch_next.py` | Automatically transition to the next milestone after completion |
+| `handoff.py` | Generate session handoff prompts for context renewal between sessions |
 
 ## Installation
 
@@ -98,6 +99,15 @@ python tools/ask_lead.py "<question>" [options]
 | `--verbose` | flag | `false` | Include debug information |
 | `--milestone` | string | auto-detected | Override milestone identifier |
 | `--phase` | string | auto-detected | Override phase identifier |
+| `--mode` | `interactive`, `stub`, `api` | `interactive` | Interface mode for Lead DEV communication |
+
+**Interface Modes (`--mode`):**
+
+| Mode | Description |
+|------|-------------|
+| `interactive` | Opens an interactive session with Lead DEV (Gemini) - **default** |
+| `stub` | Returns stub responses for testing without actual Lead DEV connection |
+| `api` | Reserved for future API-based communication (not yet implemented) |
 
 **Examples:**
 
@@ -356,16 +366,152 @@ python tools/fetch_next.py --milestone M3
 python tools/fetch_next.py --force
 ```
 
+---
+
+### `handoff` - Session Context Renewal
+
+Generate a session handoff prompt that summarizes the current project state. Use this when starting a new Senior DEV (Claude Code) session to provide full context.
+
+**Usage:**
+
+```bash
+python tools/handoff.py [options]
+```
+
+**Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--milestone`, `-m` | string | auto-detected | Specify the target milestone (e.g., M5) |
+| `--next`, `-n` | flag | `false` | Generate handoff for the next milestone after current |
+| `--include-audit`, `-a` | flag | `false` | Include summary from the latest audit log |
+| `--compact`, `-c` | flag | `false` | Generate a more compact prompt (for smaller context windows) |
+| `--verbose`, `-v` | flag | `false` | Include debug information to stderr |
+| `--output`, `-o` | string | stdout | Write output to file instead of stdout |
+
+**Examples:**
+
+```bash
+# Generate for current milestone
+python tools/handoff.py
+
+# Generate for specific milestone
+python tools/handoff.py --milestone M5
+
+# Generate for next milestone (useful for transitions)
+python tools/handoff.py --next
+
+# Include audit summary
+python tools/handoff.py --include-audit
+
+# Compact output for smaller context windows
+python tools/handoff.py --compact
+
+# Write to file for clipboard copy
+python tools/handoff.py --output handoff_prompt.txt
+```
+
+**Output:**
+
+The tool generates a structured "System Prompt" containing:
+
+- **Header:** Project name, current milestone, generation timestamp
+- **Objective:** Goal of the current milestone
+- **Architecture Summary:** Key architectural decisions (omitted in compact mode)
+- **Roadmap:** Current project progress status
+- **Milestone Phases:** Phase checklist from the milestone spec
+- **Success Criteria:** Completion criteria for the milestone
+- **Audit Summary:** Latest audit results (if `--include-audit` is used)
+- **Instructions:** Quick-start instructions for the new session
+
+---
+
+## Context Renewal Workflow
+
+When a Senior DEV session ends (context exhaustion, timeout, or milestone transition), use the following workflow to start a new session with full context:
+
+### Step 1: Complete the Current Milestone
+
+After completing all phases of a milestone:
+
+```bash
+# Report final phase completion
+python tools/report_progress.py --phase 3 --status done
+
+# Fetch the next milestone (archives current, generates next)
+python tools/fetch_next.py
+```
+
+### Step 2: Generate a Handoff Prompt
+
+Generate the session initialization block for the new session:
+
+```bash
+# Generate handoff for the new milestone
+python tools/handoff.py --next
+
+# Or explicitly for a specific milestone
+python tools/handoff.py --milestone M6
+```
+
+**Copy-to-clipboard shortcut:**
+
+```bash
+# macOS
+python tools/handoff.py | pbcopy
+
+# Linux (X11)
+python tools/handoff.py | xclip -selection clipboard
+
+# Linux (Wayland)
+python tools/handoff.py | wl-copy
+```
+
+### Step 3: Start the New Session
+
+1. Open a new Claude Code session
+2. Paste the handoff prompt as the first message
+3. The new session now has full project context
+
+### Workflow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Context Renewal Workflow                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   Session N (Milestone M)                                        │
+│   ┌─────────────────────────────┐                                │
+│   │  1. Complete milestone      │                                │
+│   │  2. report_progress --done  │                                │
+│   │  3. fetch_next.py           │ ─── Archives M, creates M+1    │
+│   └─────────────────────────────┘                                │
+│                │                                                 │
+│                ▼                                                 │
+│   ┌─────────────────────────────┐                                │
+│   │  4. handoff.py --next       │ ─── Generates System Prompt    │
+│   └─────────────────────────────┘                                │
+│                │                                                 │
+│                ▼                                                 │
+│   Session N+1 (Milestone M+1)                                    │
+│   ┌─────────────────────────────┐                                │
+│   │  5. Paste handoff prompt    │                                │
+│   │  6. Begin milestone M+1     │                                │
+│   └─────────────────────────────┘                                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## Troubleshooting
 
 ### Exit Codes Reference
 
-| Code | `ask_lead` | `report_progress` | `status_check` |
-|------|------------|-------------------|----------------|
-| 0 | Success - response received | Success - progress recorded | Aligned - no issues |
-| 1 | Error - Lead DEV unreachable | Error - Lead DEV unreachable | Warning - minor issues |
-| 2 | Error - invalid query format | Error - invalid arguments | Misaligned - drift detected |
-| 3 | Error - context aggregation failed | Error - phase not found | Error - cannot determine status |
+| Code | `ask_lead` | `report_progress` | `status_check` | `handoff` |
+|------|------------|-------------------|----------------|-----------|
+| 0 | Success - response received | Success - progress recorded | Aligned - no issues | Success - prompt generated |
+| 1 | Error - Lead DEV unreachable | Error - Lead DEV unreachable | Warning - minor issues | Error - required files not found |
+| 2 | Error - invalid query format | Error - invalid arguments | Misaligned - drift detected | Error - invalid arguments |
+| 3 | Error - context aggregation failed | Error - phase not found | Error - cannot determine status | - |
 
 ### Common Issues
 
@@ -401,6 +547,7 @@ python tools/fetch_next.py --force
 │   ├── status_check.py       # Alignment validation tool
 │   ├── ingest_brief.py       # Project inception tool
 │   ├── fetch_next.py         # Milestone progression tool
+│   ├── handoff.py            # Session context renewal tool
 │   ├── lib/
 │   │   ├── __init__.py
 │   │   ├── config.py         # Configuration management
