@@ -21,3 +21,8 @@
 - [x] Implement continuous milestone progression (`fetch_next.py`).
 - [x] Create master bootloader script (`hmas_boot.sh`).
 
+## Milestone 5: Bridge Layer & Context Continuity (Completed)
+- [x] Activate `ask_lead` (Remove stubs).
+- [x] Implement "Session Handoff" protocol.
+- [x] Refine context aggregation for long-running tasks.
+
