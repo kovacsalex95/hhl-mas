@@ -4,6 +4,12 @@
 # YAML parsing for configuration files
 PyYAML>=6.0
 
+# Gemini API for Lead DEV integration (M6)
+google-generativeai>=0.8.0
+
+# Environment variable loading
+python-dotenv>=1.0.0
+
 # Note: All other dependencies are from the Python standard library:
 # - argparse (argument parsing)
 # - json (JSON serialization)
