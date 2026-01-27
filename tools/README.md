@@ -72,6 +72,25 @@ Configuration can also be set via environment variables:
 | `HMAS_LOG_LEVEL` | Logging verbosity | `INFO` |
 | `HMAS_CONFIG_PATH` | Path to config file | `tools/config.yaml` |
 
+## Command Macros (Quick Reference)
+
+The following shorthand macros are available for efficient Bridge Layer interaction during Senior DEV sessions:
+
+| Macro | Expands To | Purpose |
+|-------|------------|---------|
+| `>> STATUS` | `python tools/status_check.py` | Check alignment and environment state |
+| `>> DONE` | `python tools/report_progress.py --phase <N> --status done --mode api` | Report current phase completed |
+| `>> BLOCK` | `python tools/report_progress.py --phase <N> --status blocked --mode api` | Report current phase blocked |
+| `>> ASK <query>` | `python tools/ask_lead.py --mode api "<query>"` | Query Lead DEV for guidance |
+| `>> HANDOFF` | `python tools/handoff.py --auto` | Prepare context for next session, then exit |
+
+**Usage Notes:**
+- Replace `<N>` with the current phase number (e.g., `>> DONE` → `python tools/report_progress.py --phase 3 --status done`)
+- After `>> HANDOFF`, exit the session immediately. The Infinity Loop will restart with fresh context.
+- These macros are defined in the System Prompt and are meant to reduce token usage and speed up interactions.
+
+---
+
 ## Tools Reference
 
 ### `ask_lead` - Query Lead DEV
@@ -107,13 +126,16 @@ python tools/ask_lead.py "<question>" [options]
 |------|-------------|
 | `interactive` | Opens an interactive session with Lead DEV (Gemini) - **default** |
 | `stub` | Returns stub responses for testing without actual Lead DEV connection |
-| `api` | Reserved for future API-based communication (not yet implemented) |
+| `api` | Uses Gemini API for automated, non-blocking queries (requires `GEMINI_API_KEY` in `.env`) |
 
 **Examples:**
 
 ```bash
-# Basic query
+# Basic query (interactive mode)
 python tools/ask_lead.py "Should user sessions persist across server restarts?"
+
+# Automated query via Gemini API (non-blocking)
+python tools/ask_lead.py --mode api "What is the primary goal of M6?"
 
 # With JSON output
 python tools/ask_lead.py --format json "What authentication method should I use?"
@@ -170,6 +192,15 @@ python tools/report_progress.py --phase <N> --status <status> [options]
 | `--message` | string | none | Additional details or notes |
 | `--milestone` | string | auto-detected | Override milestone identifier |
 | `--verbose` | flag | `false` | Include debug information |
+| `--mode` | `interactive`, `stub`, `api` | `interactive` | Interface mode for Lead DEV communication |
+
+**Interface Modes (`--mode`):**
+
+| Mode | Description |
+|------|-------------|
+| `interactive` | Opens an interactive session with Lead DEV (Gemini) - **default** |
+| `stub` | Returns stub responses for testing without actual Lead DEV connection |
+| `api` | Uses Gemini API for automated, non-blocking progress reports |
 
 **Status Values:**
 
@@ -190,6 +221,9 @@ python tools/report_progress.py --phase 2 --status blocked --message "Waiting fo
 
 # Ready for review
 python tools/report_progress.py --phase 3 --status review --message "Authentication flow ready for UAT"
+
+# Automated (non-blocking) progress report via Gemini API
+python tools/report_progress.py --phase 4 --status done --mode api
 ```
 
 **Output:**
