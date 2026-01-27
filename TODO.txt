@@ -1,0 +1,18 @@
+# HMAS Project Backlog
+
+## Completed (Milestone 5)
+- [x] Remove "Empty stub response" (Activated Interactive Mode)
+- [x] Automatic context renewal (Implemented `handoff.py`)
+- [x] Frictionless handling (Master bootloader `hmas_boot.sh`)
+
+## Completed (Milestone 6)
+- [x] Gemini API integration for `ask_lead` (true autonomous mode)
+- [x] Infinity Loop for automated session renewal
+- [x] Command Macros protocol (>> STATUS, >> DONE, >> ASK, etc.)
+
+## Upcoming Ideas / Next Milestone
+- [ ] Query caching to reduce redundant Lead DEV interactions
+- [ ] Response history search tool
+- [ ] Batch progress reporting
+- [ ] Visual dashboard for project progress
+- [ ] Migrate to `google.genai` package (deprecation warning)
