@@ -2,7 +2,7 @@
 Gemini API provider for HMAS Bridge Layer.
 
 This module handles communication with the Gemini API for Lead DEV responses.
-It provides retry logic, error handling, and system prompt construction.
+It utilizes the Google GenAI SDK (v1+) for 'gemini-2.0-flash-exp' and newer models.
 """
 
 import os
@@ -23,10 +23,11 @@ load_dotenv(_project_root / ".env")
 class GeminiConfig:
     """Configuration for Gemini API."""
     api_key: str
-    model: str = "gemini-1.5-pro"
+    model: str = "gemini-2.0-flash-exp"
     timeout: int = 30
     retry_count: int = 3
     retry_delay: float = 2.0
+    thinking_level: Optional[str] = None  # LOW, HIGH, or None to disable
 
 
 class GeminiProviderError(Exception):
@@ -84,10 +85,7 @@ Do NOT:
 
 class GeminiProvider:
     """
-    Provider for Gemini API interactions.
-
-    Handles API configuration, connection management, and retry logic
-    for communicating with Gemini as the Lead DEV persona.
+    Provider for Gemini API interactions using the google-genai SDK.
     """
 
     def __init__(
@@ -101,9 +99,6 @@ class GeminiProvider:
         Args:
             config: Gemini configuration. If None, reads from environment.
             verbose: Whether to print debug information.
-
-        Raises:
-            GeminiAPIKeyError: If API key is not configured.
         """
         self.verbose = verbose
 
@@ -113,7 +108,6 @@ class GeminiProvider:
             self._config = self._load_config_from_env()
 
         self._client = None
-        self._model = None
 
     def _load_config_from_env(self) -> GeminiConfig:
         """Load configuration from environment variables."""
@@ -125,9 +119,15 @@ class GeminiProvider:
                 "Copy .env.example to .env and set your API key."
             )
 
+        # Get thinking level (optional, only for gemini-3+ models)
+        thinking_level = os.getenv("GEMINI_THINKING_LEVEL", "").upper() or None
+        if thinking_level and thinking_level not in ("LOW", "HIGH"):
+            thinking_level = None  # Invalid value, disable thinking mode
+
         return GeminiConfig(
             api_key=api_key,
-            model=os.getenv("GEMINI_MODEL", "gemini-1.5-pro"),
+            model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+            thinking_level=thinking_level,
         )
 
     def _ensure_client(self) -> None:
@@ -136,22 +136,52 @@ class GeminiProvider:
             return
 
         try:
-            import google.generativeai as genai
+            from google import genai
         except ImportError:
             raise GeminiProviderError(
-                "google-generativeai package not installed. "
+                "google-genai package not installed. "
                 "Run: pip install -r tools/requirements.txt"
             )
 
-        genai.configure(api_key=self._config.api_key)
-        self._client = genai
-        self._model = genai.GenerativeModel(
-            model_name=self._config.model,
-            system_instruction=LEAD_DEV_SYSTEM_PROMPT,
-        )
+        self._client = genai.Client(api_key=self._config.api_key)
 
         if self.verbose:
-            print(f"[DEBUG] Gemini client initialized with model: {self._config.model}")
+            thinking_info = f", thinking={self._config.thinking_level}" if self._config.thinking_level else ""
+            print(f"[DEBUG] Gemini client initialized for model: {self._config.model}{thinking_info}")
+
+    def _build_generate_config(self):
+        """
+        Build GenerateContentConfig with optional thinking mode.
+
+        Thinking mode is only applied if:
+        - thinking_level is explicitly set, OR
+        - model name contains 'gemini-3'
+
+        Returns:
+            GenerateContentConfig instance.
+        """
+        from google.genai import types
+
+        config_args = {
+            "system_instruction": LEAD_DEV_SYSTEM_PROMPT,
+        }
+
+        # Determine if thinking mode should be enabled
+        should_enable_thinking = (
+            self._config.thinking_level is not None or
+            "gemini-3" in self._config.model.lower()
+        )
+
+        if should_enable_thinking:
+            # Default to LOW if model supports thinking but level not specified
+            level_str = self._config.thinking_level or "LOW"
+            level = getattr(types.ThinkingLevel, level_str, types.ThinkingLevel.LOW)
+            config_args["thinking_config"] = types.ThinkingConfig(thinking_level=level)
+
+            if self.verbose:
+                print(f"[DEBUG] Thinking mode enabled: {level_str}")
+
+        return types.GenerateContentConfig(**config_args)
 
     def query(
         self,
@@ -167,24 +197,26 @@ class GeminiProvider:
 
         Returns:
             Response text from Gemini.
-
-        Raises:
-            GeminiConnectionError: If connection fails after retries.
-            GeminiResponseError: If API returns an error.
         """
         self._ensure_client()
 
         # Build the prompt with context
-        prompt = self._build_prompt(question, context)
+        prompt_content = self._build_prompt(question, context)
 
         if self.verbose:
-            print(f"[DEBUG] Prompt length: {len(prompt)} chars")
+            print(f"[DEBUG] Prompt length: {len(prompt_content)} chars")
 
         # Execute with retry
         last_error = None
+        config = self._build_generate_config()
+
         for attempt in range(self._config.retry_count):
             try:
-                response = self._model.generate_content(prompt)
+                response = self._client.models.generate_content(
+                    model=self._config.model,
+                    contents=prompt_content,
+                    config=config,
+                )
 
                 if response.text:
                     return response.text.strip()
@@ -256,7 +288,8 @@ class GeminiProvider:
         self._ensure_client()
 
         # Build progress report prompt
-        report = f"""## Progress Report
+        report = f"""
+## Progress Report
 
 **Milestone:** {milestone}
 **Phase:** {phase}
@@ -266,17 +299,22 @@ class GeminiProvider:
             report += f"**Details:** {message}\n"
 
         report += """
+
 Please acknowledge this progress report and provide any guidance for next steps.
 If status is 'blocked', provide resolution suggestions.
 If status is 'review', note what should be validated."""
 
-        prompt = self._build_prompt(report, context)
+        prompt_content = self._build_prompt(report, context)
+        config = self._build_generate_config()
 
         # Execute with retry
-        last_error = None
         for attempt in range(self._config.retry_count):
             try:
-                response = self._model.generate_content(prompt)
+                response = self._client.models.generate_content(
+                    model=self._config.model,
+                    contents=prompt_content,
+                    config=config,
+                )
 
                 if response.text:
                     return response.text.strip()
@@ -284,7 +322,6 @@ If status is 'review', note what should be validated."""
                     return f"Acknowledged: Phase {phase} marked as '{status}'"
 
             except Exception as e:
-                last_error = e
                 if self.verbose:
                     print(f"[DEBUG] Attempt {attempt + 1} failed: {e}")
 
@@ -306,7 +343,8 @@ If status is 'review', note what should be validated."""
         """
         self._ensure_client()
 
-        prompt = """## Status Validation Request
+        prompt = """
+## Status Validation Request
 
 Please validate the current project state based on the provided context.
 Check for:
@@ -317,9 +355,14 @@ Check for:
 Provide a concise assessment."""
 
         full_prompt = self._build_prompt(prompt, context)
+        config = self._build_generate_config()
 
         try:
-            response = self._model.generate_content(full_prompt)
+            response = self._client.models.generate_content(
+                model=self._config.model,
+                contents=full_prompt,
+                config=config,
+            )
             if response.text:
                 return response.text.strip()
         except Exception as e:

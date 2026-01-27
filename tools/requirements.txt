@@ -5,7 +5,8 @@
 PyYAML>=6.0
 
 # Gemini API for Lead DEV integration (M6)
-google-generativeai>=0.8.0
+# v1.0+ required for thinking mode support (gemini-3+ models)
+google-genai>=1.0.0
 
 # Environment variable loading
 python-dotenv>=1.0.0
