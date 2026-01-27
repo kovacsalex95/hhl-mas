@@ -8,6 +8,7 @@ Usage:
     python tools/report_progress.py --phase 1 --status done
     python tools/report_progress.py --phase 2 --status blocked --message "Waiting for API credentials"
     python tools/report_progress.py --phase 3 --status review --message "Authentication flow ready for UAT"
+    python tools/report_progress.py --phase 4 --status done --mode api
 
 Exit codes:
     0 - Success: progress recorded
@@ -84,6 +85,13 @@ Examples:
         help="Include debug information",
     )
 
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["interactive", "stub", "api"],
+        help="Interface mode: interactive (default), stub (testing), api (Gemini)",
+    )
+
     return parser.parse_args()
 
 
@@ -157,7 +165,7 @@ def main() -> int:
     try:
         config = Config()
         aggregator = ContextAggregator(config)
-        interface = LeadDevInterface(config, verbose=args.verbose)
+        interface = LeadDevInterface(config, verbose=args.verbose, mode=args.mode)
     except Exception as e:
         print(format_error(f"Initialization failed: {e}"))
         return 2
