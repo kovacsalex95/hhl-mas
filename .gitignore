@@ -4,3 +4,12 @@ __pycache__/
 *.pyc
 *.pyo
 tools/logs/
+
+# Virtual environment
+venv/
+
+# Environment variables (contains secrets)
+.env
+
+# Gemini context files (runtime)
+.gemini/
