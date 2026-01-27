@@ -220,6 +220,19 @@ PROTOCOL:
 3. START Phase 1 immediately.
 4. Implement the requested tools in the \`tools/\` directory.
 5. Report progress after each phase: python tools/report_progress.py
+
+COMMAND PROTOCOLS (Macros):
+Use these shorthand commands to interact with the Bridge Layer efficiently.
+
+| Macro | Expands To | Purpose |
+|-------|------------|---------|
+| >> STATUS | python tools/status_check.py | Check alignment and environment state |
+| >> DONE | python tools/report_progress.py --phase <N> --status done --mode api | Report current phase completed |
+| >> BLOCK | python tools/report_progress.py --phase <N> --status blocked --mode api | Report current phase blocked |
+| >> ASK <query> | python tools/ask_lead.py --mode api "<query>" | Query Lead DEV for guidance |
+| >> HANDOFF | python tools/handoff.py --auto | Prepare context for next session, then exit |
+
+Note: Replace <N> with the current phase number. After >> HANDOFF, exit the session immediately.
 MILESTONE_PROMPT
     fi
 }

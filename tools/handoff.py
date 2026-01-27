@@ -84,6 +84,12 @@ Examples:
         help="Write output to file instead of stdout",
     )
 
+    parser.add_argument(
+        "--auto",
+        action="store_true",
+        help="Auto mode: write context to .gemini/next_context.txt for the Infinity Loop",
+    )
+
     return parser.parse_args()
 
 
@@ -335,15 +341,35 @@ You are the **Senior DEV** (Claude Code) in the Hierarchical Multi-Agent System 
 """
         sections.append(audit_section)
 
+    # Command Protocols section
+    protocols = """---
+## Command Protocols (Macros)
+
+Use these shorthand commands to interact with the Bridge Layer efficiently:
+
+| Macro | Expands To | Purpose |
+|-------|------------|---------|
+| `>> STATUS` | `python tools/status_check.py` | Check alignment and environment state |
+| `>> DONE` | `python tools/report_progress.py --phase <N> --status done --mode api` | Report current phase completed |
+| `>> BLOCK` | `python tools/report_progress.py --phase <N> --status blocked --mode api` | Report current phase blocked |
+| `>> ASK <query>` | `python tools/ask_lead.py --mode api "<query>"` | Query Lead DEV for guidance |
+| `>> HANDOFF` | `python tools/handoff.py --auto` | Prepare context for next session, then exit |
+
+**Note:** Replace `<N>` with the current phase number. After `>> HANDOFF`, exit the session immediately.
+"""
+    sections.append(protocols)
+
     # Footer with instructions
     footer = """---
 ## Instructions
 
 1. Review the context above to understand the current project state.
 2. Check `docs/01_milestones/` for the detailed milestone specification.
-3. Use `python tools/status_check.py` to verify alignment.
-4. Use `python tools/ask_lead.py` for clarifications from Lead DEV.
+3. Use `>> STATUS` to verify alignment.
+4. Use `>> ASK <query>` for clarifications from Lead DEV.
 5. Proceed with the current phase tasks.
+6. Use `>> DONE` after completing each phase.
+7. Use `>> HANDOFF` when context window is exhausted or milestone is complete.
 
 **Key Files:**
 - `docs/00_global/ARCHITECTURE.md` - System architecture
@@ -439,7 +465,19 @@ def main() -> int:
     )
 
     # Output
-    if args.output:
+    if args.auto:
+        # Auto mode: write to .gemini/next_context.txt for the Infinity Loop
+        gemini_dir = config.project_root / ".gemini"
+        gemini_dir.mkdir(exist_ok=True)
+        output_path = gemini_dir / "next_context.txt"
+        try:
+            output_path.write_text(prompt, encoding="utf-8")
+            print(f"[HANDOFF] Context written to: {output_path}")
+            print("[HANDOFF] Exit session now. The Infinity Loop will restart with fresh context.")
+        except Exception as e:
+            print(f"[ERROR] Failed to write context file: {e}", file=sys.stderr)
+            return 1
+    elif args.output:
         try:
             output_path = Path(args.output)
             output_path.write_text(prompt, encoding="utf-8")
